@@ -1,0 +1,11 @@
+Copyright © 2026 Aoripus (Beijing) Technology Co., Ltd.
+安锐普世（北京）科技有限公司
+Contact: master@aoripus.com
+
+SPDX-License-Identifier: GPL-2.0-only (kernel patches) / GPL-2.0-or-later (scripts & docs)
+
+This project is licensed under the GNU General Public License version 2
+(GPL-2.0), the same license as the Linux kernel it patches.
+
+The full text of the GNU GPL v2 is available at:
+https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt

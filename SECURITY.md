@@ -12,7 +12,7 @@ KVM fix (`2abd5287f083`).
 If you find a problem in this project's patches or scripts:
 
 - **Do not** open a public issue for embargoed or unpatched details.
-- Email: 1737562@qq.com
+- Email: master@aoripus.com
 - Include: affected kernel versions, reproduction steps, and (if possible)
   a suggested fix.
 
