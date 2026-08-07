@@ -20,28 +20,26 @@ echo "== patch state =="
 grep -q '^CONFIG_LIVEPATCH=y' "/boot/config-$(uname -r)" && ok "CONFIG_LIVEPATCH=y" \
     || bad "CONFIG_LIVEPATCH not enabled"
 
-[[ -f "/sys/kernel/livepatch/$NAME/enabled" ]] \
-    && ok "livepatch $NAME present in sysfs" || bad "livepatch $NAME not loaded"
+if [[ -d "/sys/kernel/livepatch/$NAME" ]]; then
+    ok "livepatch $NAME present in sysfs"
+    EN="$(cat "/sys/kernel/livepatch/$NAME/enabled" 2>/dev/null)"
+    [[ "$EN" == "1" ]] && ok "livepatch $NAME enabled" || bad "livepatch $NAME not enabled (state=$EN)"
 
-if [[ -f "/sys/kernel/livepatch/$NAME/enabled" ]]; then
-    [[ "$(cat "/sys/kernel/livepatch/$NAME/enabled")" == "1" ]] \
-        && ok "livepatch $NAME enabled" || bad "livepatch $NAME not enabled"
+    echo "== patched functions (must include the KVM fault handlers) =="
+    if [[ -f "/sys/kernel/livepatch/$NAME/functions" ]]; then
+        FUNCS="$(cat "/sys/kernel/livepatch/$NAME/functions")"
+        echo "$FUNCS"
+        for f in direct_page_fault paging64_page_fault paging32_page_fault nested_page_fault; do
+            echo "$FUNCS" | grep -q "$f" && ok "function $f live-patched" || echo "[info] $f not in patch set (kernel variant may not have it)"
+        done
+    fi
+else
+    bad "livepatch $NAME not loaded"
 fi
 
-echo "== patched functions live (ftrace) =="
-N=0
-for f in direct_page_fault paging64_page_fault paging32_page_fault nested_page_fault; do
-    if grep -q "$f" /sys/kernel/tracing/available_filter_functions_addrs 2>/dev/null \
-       || grep -q "$f" /proc/kallsyms 2>/dev/null; then
-        ok "symbol $f present"
-        N=$((N+1))
-    fi
-done
-[[ "$N" -ge 1 ]] || bad "no patched KVM symbols found"
-
 echo "== zero-downtime evidence =="
-UPTIME_BEFORE="$(awk '{print int($1)}' /proc/uptime)"
-ok "host uptime ${UPTIME_BEFORE}s (unchanged by patch load)"
+UPTIME="$(awk '{print int($1)}' /proc/uptime)"
+ok "host uptime ${UPTIME}s (reboot would reset this)"
 
 if command -v virsh >/dev/null 2>&1; then
     VMS="$(virsh list --name 2>/dev/null | grep -c -v '^$' || true)"

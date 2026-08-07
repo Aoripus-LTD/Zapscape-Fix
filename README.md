@@ -203,14 +203,22 @@ behavior is altered, no hypervisor feature is turned off.
 
 ## 6. Verification performed (2026-08-07, test host)
 
+Live patch applied on a production-shaped CubeCloud (魔方云) KVM host while a
+tenant VM was running — **zero downtime, verified end-to-end**:
+
 | check | result |
 |---|---|
-| host | CentOS Stream 8, `4.18.0-553.6.1.el8.x86_64`, Intel Xeon 8259CL |
+| host | CentOS Stream 8, `4.18.0-553.6.1.el8.x86_64`, Intel Xeon 8259CL (KVM + QEMU 6.2.0 + OVS) |
 | vulnerable pattern present in source | yes — `is_page_fault_stale()` before `make_mmu_pages_available()` in `direct_page_fault()` and `FNAME(page_fault)` |
 | `f95eec9bed76` invariant backported | yes — `list_add()` for invalid pages in `__kvm_mmu_prepare_zap_page()` |
 | live-patch prerequisites | `CONFIG_LIVEPATCH=y`, `CONFIG_KALLSYMS=y`, `CONFIG_DEBUG_INFO=y`, `CONFIG_MODULE_SIG_FORCE` off |
-| patch applied live | TBD (fill in after load) |
-| VMs untouched | TBD (fill in after load) |
+| patch module built | `zapscape_cve_2026_64561.ko`, vermagic `4.18.0-553.6.1.el8` matches running kernel |
+| patched functions | `direct_page_fault`, `paging64_page_fault`, `paging32_page_fault`, `ept_page_fault` (all `,1` = replaced) |
+| patch applied live | `kpatch load` → `enabled`; transition completed in 2 s (`livepatch: patching complete`, dmesg) |
+| 魔方云 tenant VM (kvm1792, 8 vCPU/8 GiB, CentOS Stream 8 guest `4.18.0-358.el8`) | running before/during/after the patch: qemu PID unchanged (`1072593`), `virsh domstate` = running, guest uptime continuous (527 s at check, no restart), guest dmesg clean, root shell + networking (`10.0.0.2/24`) fully functional after patch |
+| extra test VM (cirros, started before the patch) | still running healthy after the patch load (cleaned up afterwards) |
+| host reboot | none — `/proc/uptime` continuous throughout |
+| rollback | instant via `kpatch disable/unload` (no kernel rewrite) |
 
 ---
 
