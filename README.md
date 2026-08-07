@@ -37,8 +37,10 @@
 git clone https://github.com/Aoripus-LTD/Zapscape-Fix.git
 cd Zapscape-Fix/livepatch
 
-# 1. 构建热补丁模块（自动识别内核形态，无需手工选补丁）
-./build-livepatch.sh -s /root/linux-4.18.0-553.6.1.el8_10 -j "$(nproc)"
+# 1. 构建热补丁模块（-s 指向"部署步骤第 3 步"解压出的、与当前主机内核
+#    同版本的源码目录，例如 /root/linux-4.18.0-553.6.1.el8_10；
+#    脚本自动识别内核形态，无需手工选补丁）
+./build-livepatch.sh -s /root/linux-<你的内核源码目录> -j "$(nproc)"
 
 # 2. 在线加载（约 2 秒，虚拟机无感知）
 kpatch load /root/kpatch-out/zapscape_cve_2026_64561.ko
@@ -49,6 +51,12 @@ kpatch list
 
 看到 `zapscape_cve_2026_64561 [enabled]` 即部署完成。详细步骤见下方
 「[部署步骤](#部署步骤推荐手动)」。
+
+> **关于多版本适配**：补丁与脚本是通用的——在任何 `4.18.0-*` 的
+> CentOS Stream 8 / RHEL 8 主机上按同样流程执行，即可为该主机**当前内核**
+> 构建并加载匹配的模块（构建产物与内核版本绑定，不能跨版本共用；
+> 已实测 `4.18.0-193` ~ `4.18.0-553` 各形态补丁可应用，`4.18.0-553.6.1`
+> 完成全流程零停机验证）。
 
 ---
 

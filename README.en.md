@@ -39,8 +39,11 @@ On the host (about 30 minutes including the build):
 git clone https://github.com/Aoripus-LTD/Zapscape-Fix.git
 cd Zapscape-Fix/livepatch
 
-# 1. build the live-patch module (auto-detects the kernel code shape)
-./build-livepatch.sh -s /root/linux-4.18.0-553.6.1.el8_10 -j "$(nproc)"
+# 1. build the live-patch module (-s points at the source directory you
+#    extracted in Deployment step 3, e.g. /root/linux-4.18.0-553.6.1.el8_10,
+#    matching THIS host's kernel version; the script auto-detects the
+#    code shape and picks the variant)
+./build-livepatch.sh -s /root/linux-<your-kernel-source-dir> -j "$(nproc)"
 
 # 2. apply online (~2 seconds, VMs are unaware)
 kpatch load /root/kpatch-out/zapscape_cve_2026_64561.ko
@@ -51,6 +54,14 @@ kpatch list
 
 `zapscape_cve_2026_64561 [enabled]` means deployment is complete. Full
 steps in [Deployment](#deployment-manual-recommended) below.
+
+> **On multi-version support**: patches and scripts are generic — run the
+> same flow on any `4.18.0-*` CentOS Stream 8 / RHEL 8 host and it builds
+> and loads a module matching that host's **current kernel** (build output
+> is bound to the kernel version and cannot be shared across versions;
+> every code shape from `4.18.0-193` to `4.18.0-553` has been verified
+> applicable, and `4.18.0-553.6.1` completed the full zero-downtime
+> verification).
 
 ---
 
