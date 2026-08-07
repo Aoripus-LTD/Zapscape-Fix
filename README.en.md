@@ -328,9 +328,8 @@ verification/test server for this work right after the PoC disclosure.
 
 ## Copyright & License
 
-Copyright © 2026 Aoripus (Beijing) Technology Co., Ltd. · 安锐普世（北京）科技有限公司
-Contact: master@aoripus.com
-
-- Kernel patches: GPL-2.0 (same as the Linux kernel)
-- Scripts & documentation: GPL-2.0-or-later
-- Defensive security engineering for hardening hosts you own. No warranty.
+- **Copyright**: © 2026 Aoripus (Beijing) Technology Co., Ltd. · 安锐普世（北京）科技有限公司
+- **Contact**: master@aoripus.com
+- **Kernel patches**: GPL-2.0 (same as the Linux kernel)
+- **Scripts & documentation**: GPL-2.0-or-later
+- **Disclaimer**: defensive security engineering for hardening hosts you own; no warranty.

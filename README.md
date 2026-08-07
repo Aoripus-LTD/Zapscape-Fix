@@ -314,9 +314,8 @@ Zapscape-Fix/
 
 ## 版权与许可
 
-版权 © 2026 安锐普世（北京）科技有限公司 · Aoripus (Beijing) Technology Co., Ltd.
-联系邮箱：master@aoripus.com
-
-- 内核补丁：GPL-2.0（与 Linux 内核一致）
-- 脚本与文档：GPL-2.0-or-later
-- 本仓库为防御性安全工程，仅供对自有/授权主机加固，无任何担保。
+- **版权所有**：© 2026 安锐普世（北京）科技有限公司 · Aoripus (Beijing) Technology Co., Ltd.
+- **联系邮箱**：master@aoripus.com
+- **内核补丁**：GPL-2.0（与 Linux 内核一致）
+- **脚本与文档**：GPL-2.0-or-later
+- **免责声明**：本仓库为防御性安全工程，仅供对自有/授权主机加固，无任何担保。
