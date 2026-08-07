@@ -9,11 +9,6 @@ kernels)**:
 **Zero downtime · no host reboot · no VM restart · no virtualization feature
 disabled · fully transparent**
 
-```
-Copyright © 2026 Aoripus (Beijing) Technology Co., Ltd. (安锐普世（北京）科技有限公司)
-Contact: master@aoripus.com
-```
-
 > **⚠️ This repository is defensive security work.** Apply the live patch only
 > to hosts you own or are authorized to harden. Do not use this content (or the
 > PoC it mitigates, V4bel/Zapscape) against systems you are not authorized to
