@@ -17,6 +17,7 @@
 
 ## 目录
 
+- [受影响范围（按 CPU）](#受影响范围按cpu)
 - [系统要求](#系统要求)
 - [部署步骤](#部署步骤)
 - [验证补丁是否生效](#验证补丁是否生效)
@@ -25,6 +26,48 @@
 - [项目结构](#项目结构)
 - [参考资料](#参考资料)
 - [版权与许可](#版权与许可)
+
+---
+
+## 受影响范围（按 CPU）
+
+Zapscape 的触发条件分平台：**AMD 无任何额外硬件要求**（任意支持 SVM/NPT
+的 CPU 均可触发）；**Intel 必须支持 5 级 EPT（EPT page-walk length 5，
+PWL5）** 且宿主将其暴露给 L1，否则 root/child 别名无法构造，该攻击路径
+不可触发。
+
+| 平台 | CPU 系列 | 可触发（需打补丁） |
+|---|---|---|
+| Intel | Xeon Scalable 第 1 代 — Skylake-SP（4100/5100/6100/8100） | ✗ 否 |
+| Intel | Xeon Scalable 第 2 代 — Cascade Lake（4200/5200/6200/8200） | ✗ 否（含本仓库实测的 8259CL） |
+| Intel | Xeon Scalable 第 3 代 — Ice Lake-SP（4300/5300/6300/8300） | ✓ 是 |
+| Intel | Xeon Scalable 第 4 代 — Sapphire Rapids（8400） | ✓ 是 |
+| Intel | Xeon Scalable 第 5 代 — Emerald Rapids（8500） | ✓ 是 |
+| Intel | 其他（Xeon E、Cooper Lake 83xxH 等边缘型号） | 以实测为准 |
+| AMD | EPYC 第 1–3 代（Naples 7001 / Rome 7002 / Milan 7003） | ✓ 是（无 LA57 也无需） |
+| AMD | EPYC 第 4 代（Genoa/Bergamo/Siena 9004/8004） | ✓ 是 |
+
+**依据**：5-level paging / 5-level EPT 由 Intel 在 **Ice Lake 微架构**首次实现
+（Wikipedia: Intel 5-level paging；Intel 白皮书《5-Level Paging and 5-Level
+EPT》，文档号 671442）；本仓库在 Xeon Platinum 8259CL（Cascade Lake）上实测
+`IA32_VMX_EPT_VPID_CAP (MSR 0x48C)` 的 bit 7（PWL5）= **0**，`/proc/cpuinfo`
+无 `la57`——印证 Cascade Lake 及更早无 5 级 EPT。AMD 的 NPT 始终为 4 级硬件
+walk，Zapscape 不需要 5 级能力，故 AMD 全代可触发。
+
+> ⚠️ 代际表仅供参考，**以实测为准**（云厂商/固件可能禁用特性）。一条命令确认
+> 你的 Intel 宿主机是否需要打补丁：
+
+```bash
+# 方法一（简单）：检查 LA57（5-level paging）
+grep -m1 flags /proc/cpuinfo | grep -o la57 && echo "有 LA57 → 需打补丁" || echo "无 LA57 → 大概率无需"
+
+# 方法二（直接，Intel 专用）：读取 EPT 能力 MSR 0x48C 的 bit 7（PWL5）
+dnf install -y msr-tools && modprobe msr
+V=$(rdmsr -p0 0x48c); echo "EPT PWL5 支持: $(( (0x$V >> 7) & 1 ))"   # 1=支持（需打补丁） 0=不支持
+```
+
+> ⚠️ "不可触发"≠"绝对安全"：仅代表 Zapscape 的 Intel 攻击路径不成立；KVM
+> shadow MMU 仍可能有其他风险，请继续关注官方安全更新。
 
 ---
 

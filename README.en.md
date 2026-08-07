@@ -19,6 +19,7 @@ applied online via the kernel livepatch mechanism:
 
 ## Table of Contents
 
+- [Affected CPUs](#affected-cpus)
 - [System Requirements](#system-requirements)
 - [Deployment](#deployment)
 - [Verifying the Patch](#verifying-the-patch)
@@ -27,6 +28,53 @@ applied online via the kernel livepatch mechanism:
 - [Project Layout](#project-layout)
 - [References](#references)
 - [Copyright & License](#copyright--license)
+
+---
+
+## Affected CPUs
+
+Zapscape's trigger conditions differ by platform: **AMD has no extra
+hardware requirement** (any CPU with SVM/NPT can trigger it); **Intel must
+support 5-level EPT (EPT page-walk length 5, PWL5)** and the host must
+expose it to L1 — otherwise the root/child alias cannot be built and this
+attack path does not exist.
+
+| platform | CPU family | triggerable (needs the patch) |
+|---|---|---|
+| Intel | Xeon Scalable 1st Gen — Skylake-SP (4100/5100/6100/8100) | ✗ no |
+| Intel | Xeon Scalable 2nd Gen — Cascade Lake (4200/5200/6200/8200) | ✗ no (incl. the 8259CL tested for this repo) |
+| Intel | Xeon Scalable 3rd Gen — Ice Lake-SP (4300/5300/6300/8300) | ✓ yes |
+| Intel | Xeon Scalable 4th Gen — Sapphire Rapids (8400) | ✓ yes |
+| Intel | Xeon Scalable 5th Gen — Emerald Rapids (8500) | ✓ yes |
+| Intel | others (Xeon E, Cooper Lake 83xxH, edge SKUs) | verify on the actual box |
+| AMD | EPYC 1st–3rd Gen (Naples 7001 / Rome 7002 / Milan 7003) | ✓ yes (no LA57 needed) |
+| AMD | EPYC 4th Gen (Genoa/Bergamo/Siena 9004/8004) | ✓ yes |
+
+**Basis**: 5-level paging / 5-level EPT was first implemented by Intel in
+the **Ice Lake** microarchitecture (Wikipedia: "Intel 5-level paging"; Intel
+white paper *5-Level Paging and 5-Level EPT*, doc 671442). Measured on the
+Xeon Platinum 8259CL (Cascade Lake) used for this repo:
+`IA32_VMX_EPT_VPID_CAP (MSR 0x48C)` bit 7 (PWL5) = **0**, and
+`/proc/cpuinfo` has no `la57` — confirming Cascade Lake and older have no
+5-level EPT. AMD's NPT is always a 4-level hardware walk; Zapscape needs no
+5-level capability there, so all AMD generations are affected.
+
+> ⚠️ The table is a guide — **measure on your actual box** (vendors/firmware
+> may disable features). One command to check whether your Intel host needs
+> the patch:
+
+```bash
+# Method 1 (simple): check LA57 (5-level paging)
+grep -m1 flags /proc/cpuinfo | grep -o la57 && echo "LA57 present -> patch needed" || echo "no LA57 -> most likely not needed"
+
+# Method 2 (direct, Intel only): read EPT capability MSR 0x48C bit 7 (PWL5)
+dnf install -y msr-tools && modprobe msr
+V=$(rdmsr -p0 0x48c); echo "EPT PWL5 support: $(( (0x$V >> 7) & 1 ))"   # 1=supported (patch needed) 0=not supported
+```
+
+> ⚠️ "Not triggerable" ≠ "absolutely safe": it only means the Zapscape Intel
+> path does not exist; other KVM shadow-MMU risks remain — keep following
+> official security updates.
 
 ---
 
