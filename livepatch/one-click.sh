@@ -11,7 +11,7 @@
 #
 # Usage: ./one-click.sh          (run from the livepatch/ directory as root)
 #        ./one-click.sh -cn      (China mainland: fetch kpatch via CDN mirror
-#                                 cdn.akaere.online instead of github.com)
+#                                 ghproxy.net instead of github.com)
 #        SKIP_BUILD=1 ./one-click.sh   (only install deps + load + verify)
 #
 set -euo pipefail
@@ -31,7 +31,7 @@ set -- "${ARGS[@]}"
 echo "=============================================================="
 echo " Zapscape-Fix (CVE-2026-64561) one-click live patch"
 echo " target: $(uname -r)"
-[[ "$CN_MODE" -eq 1 ]] && echo " network: China mainland mode (cdn.akaere.online mirror)"
+[[ "$CN_MODE" -eq 1 ]] && echo " network: China mainland mode (ghproxy.net mirror)"
 echo "=============================================================="
 
 [[ "$(id -u)" -eq 0 ]] || { echo "ERROR: run as root" >&2; exit 1; }

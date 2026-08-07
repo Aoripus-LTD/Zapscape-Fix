@@ -39,7 +39,7 @@ grep CONFIG_LIVEPATCH /boot/config-$(uname -r)
 
 # ── 1) 获取本项目 ──────────────────────────────────────────────────────
 # 中国大陆网络环境请改用镜像克隆：
-#   git clone https://cdn.akaere.online/github.com/Aoripus-LTD/Zapscape-Fix.git
+#   git clone https://ghproxy.net/github.com/Aoripus-LTD/Zapscape-Fix.git
 git clone https://github.com/Aoripus-LTD/Zapscape-Fix.git
 cd Zapscape-Fix/livepatch
 
@@ -85,7 +85,7 @@ zapscape_cve_2026_64561 [enabled]
 
 ### 中国大陆网络环境
 
-- 克隆仓库：`git clone https://cdn.akaere.online/github.com/Aoripus-LTD/Zapscape-Fix.git`
+- 克隆仓库：`git clone https://ghproxy.net/github.com/Aoripus-LTD/Zapscape-Fix.git`
 - 构建加 `-cn`：`./build-livepatch.sh -s "$SRC" -j "$(nproc)" -cn`
   （仅影响 kpatch 源码下载，其余流程完全一致）
 - `dnf` 软件源使用系统已配置的源即可；如过慢可自行配置国内镜像

@@ -41,7 +41,7 @@ grep CONFIG_LIVEPATCH /boot/config-$(uname -r)
 
 # ── 1) get this project ───────────────────────────────────────────────
 # In mainland China, clone via the mirror instead:
-#   git clone https://cdn.akaere.online/github.com/Aoripus-LTD/Zapscape-Fix.git
+#   git clone https://ghproxy.net/github.com/Aoripus-LTD/Zapscape-Fix.git
 git clone https://github.com/Aoripus-LTD/Zapscape-Fix.git
 cd Zapscape-Fix/livepatch
 
@@ -89,7 +89,7 @@ zapscape_cve_2026_64561 [enabled]
 
 ### Mainland China network
 
-- Clone: `git clone https://cdn.akaere.online/github.com/Aoripus-LTD/Zapscape-Fix.git`
+- Clone: `git clone https://ghproxy.net/github.com/Aoripus-LTD/Zapscape-Fix.git`
 - Build with `-cn`: `./build-livepatch.sh -s "$SRC" -j "$(nproc)" -cn`
   (only affects the kpatch source download; everything else is identical)
 - `dnf` repositories use whatever the system is configured with; if dnf is

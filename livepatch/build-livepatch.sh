@@ -7,7 +7,7 @@
 #   ./build-livepatch.sh -s <kernel-source-dir> [-j N] [-o outdir] [-n name]
 #   ./build-livepatch.sh -s <kernel-source-dir> -cn   # China mainland: fetch
 #                                                     # kpatch via CDN mirror
-#                                                     # (cdn.akaere.online)
+#                                                     # (ghproxy.net)
 #
 # The script is generic across all 4.18.0-* el8 kernels: it detects the KVM
 # MMU layout in the source tree and picks the correct patch variant.
@@ -54,7 +54,7 @@ done
 # ---------------------------------------------------------------------------
 KPATCH_URL="https://github.com/dynup/kpatch/archive/refs/tags/${KPATCH_VER}.tar.gz"
 if [[ "$CN_MODE" -eq 1 ]]; then
-    KPATCH_URL="https://cdn.akaere.online/${KPATCH_URL#https://}"
+    KPATCH_URL="https://ghproxy.net/${KPATCH_URL#https://}"
     echo "[*] China mainland mode (-cn): fetching kpatch via CDN mirror"
 fi
 if [[ ! -x /root/kpatch-src/kpatch-build/kpatch-build ]]; then
