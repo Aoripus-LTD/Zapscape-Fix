@@ -297,16 +297,19 @@ Zapscape-Fix/
 - 补丁讨论邮件 — <https://lore.kernel.org/all/20260721102829.313226-1-pbonzini@redhat.com/>
 - 引入缺陷的 commit — <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=f95eec9bed76>
 - kpatch 项目 — <https://github.com/dynup/kpatch>
+- 「受影响范围」来源：
+  - Wikipedia: Intel 5-level paging（首次实现于 Ice Lake） — <https://en.wikipedia.org/wiki/Intel_5-level_paging>
+  - Intel 白皮书《5-Level Paging and 5-Level EPT》（文档号 671442） — <https://www.intel.com/content/www/us/en/content-details/671442/5-level-paging-and-5-level-ept-white-paper.html>
+  - IA32_VMX_EPT_VPID_CAP 位定义（`VMX_EPT_PAGE_WALK_4_BIT`/`_5_BIT`，Linux 内核头文件 `arch/x86/include/asm/vmx.h`）
+  - KVM 向 L1 透传 EPT 能力的逻辑（Linux 内核 `arch/x86/kvm/vmx/nested.c`）
+  - 本仓库实测：Xeon Platinum 8259CL 的 MSR 0x48C bit 7（PWL5）= 0（见上表）
 
 ---
 
 ## 版权与许可
 
-```
-版权 © 2026 安锐普世（北京）科技有限公司
-Aoripus (Beijing) Technology Co., Ltd.
+版权 © 2026 安锐普世（北京）科技有限公司 · Aoripus (Beijing) Technology Co., Ltd.
 联系邮箱：master@aoripus.com
-```
 
 - 内核补丁：GPL-2.0（与 Linux 内核一致）
 - 脚本与文档：GPL-2.0-or-later

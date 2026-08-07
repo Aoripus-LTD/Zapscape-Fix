@@ -310,15 +310,19 @@ Zapscape-Fix/
 - Patch discussion — <https://lore.kernel.org/all/20260721102829.313226-1-pbonzini@redhat.com/>
 - Introducing commit — <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=f95eec9bed76>
 - kpatch — <https://github.com/dynup/kpatch>
+- "Affected CPUs" sources:
+  - Wikipedia: Intel 5-level paging (first implemented in Ice Lake) — <https://en.wikipedia.org/wiki/Intel_5-level_paging>
+  - Intel white paper *5-Level Paging and 5-Level EPT* (doc 671442) — <https://www.intel.com/content/www/us/en/content-details/671442/5-level-paging-and-5-level-ept-white-paper.html>
+  - `IA32_VMX_EPT_VPID_CAP` bit layout (`VMX_EPT_PAGE_WALK_4_BIT`/`_5_BIT`, Linux header `arch/x86/include/asm/vmx.h`)
+  - KVM L1 EPT-cap passthrough logic (Linux `arch/x86/kvm/vmx/nested.c`)
+  - Measured for this repo: Xeon Platinum 8259CL MSR 0x48C bit 7 (PWL5) = 0 (see table above)
 
 ---
 
 ## Copyright & License
 
-```
-Copyright © 2026 Aoripus (Beijing) Technology Co., Ltd. (安锐普世（北京）科技有限公司)
+Copyright © 2026 Aoripus (Beijing) Technology Co., Ltd. · 安锐普世（北京）科技有限公司
 Contact: master@aoripus.com
-```
 
 - Kernel patches: GPL-2.0 (same as the Linux kernel)
 - Scripts & documentation: GPL-2.0-or-later
