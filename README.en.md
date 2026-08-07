@@ -35,6 +35,7 @@ applied online via the kernel livepatch mechanism:
 | item | requirement |
 |---|---|
 | OS | CentOS Stream 8 / RHEL 8 (8.0 through 8.10) |
+| virtualization platform | 智简魔方 魔方云 KVM加强版 ([idcsmart Cloud KVM](https://www.idcsmart.com)) — **tested & verified** |
 | kernel | any `4.18.0-*` (all code shapes from `4.18.0-80` to `4.18.0-553` covered) |
 | privilege | root |
 | dependencies | gcc, make, git, patch, elfutils, openssl-devel, bc, bison, flex, dwarves, kpatch, kernel-devel (matching `uname -r`), kernel source RPM |
@@ -176,10 +177,10 @@ ept_page_fault,1
 (listed under `/sys/kernel/livepatch/zapscape_cve_2026_64561/kvm/`, `,1` =
 replaced)
 
-**Verified in production shape on 2026-08-07**: on a real CubeCloud
-(魔方云) KVM host with a tenant VM running — patch transition completed in
-2 s, VM qemu PID unchanged, guest uptime continuous, guest fully
-functional, host never rebooted.
+**Verified in production shape on 2026-08-07**: on a real 智简魔方
+魔方云 KVM加强版 (idcsmart Cloud KVM) host with a tenant VM running —
+patch transition completed in 2 s, VM qemu PID unchanged, guest uptime
+continuous, guest fully functional, host never rebooted.
 
 ---
 

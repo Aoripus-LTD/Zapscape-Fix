@@ -33,6 +33,7 @@
 | 项 | 要求 |
 |---|---|
 | 操作系统 | CentOS Stream 8 / RHEL 8（含 8.0 ~ 8.10 全部分支） |
+| 虚拟化平台 | 智简魔方 魔方云 KVM加强版（[idcsmart Cloud KVM](https://www.idcsmart.com)）——**已实测通过** |
 | 内核 | `4.18.0-*` 任意子版本（已覆盖 `4.18.0-80` ~ `4.18.0-553` 全部代码形态） |
 | 权限 | root |
 | 依赖 | gcc、make、git、patch、elfutils、openssl-devel、bc、bison、flex、dwarves、kpatch、kernel-devel（与运行内核同版本）、内核源码 RPM |
@@ -171,9 +172,9 @@ ept_page_fault,1
 
 （`/sys/kernel/livepatch/zapscape_cve_2026_64561/kvm/` 下可查看，`,1` 表示已替换）
 
-**实测记录**：2026-08-07 在真实魔方云（CubeCloud）KVM 宿主机上、租户 VM
-运行期间完成全流程验证——补丁加载 2 秒完成，VM 的 qemu 进程 PID 不变、
-guest uptime 连续、guest 功能完全正常，宿主机全程未重启。
+**实测记录**：2026-08-07 在真实 智简魔方 魔方云 KVM加强版（idcsmart Cloud KVM）
+宿主机上、租户 VM 运行期间完成全流程验证——补丁加载 2 秒完成，VM 的 qemu
+进程 PID 不变、guest uptime 连续、guest 功能完全正常，宿主机全程未重启。
 
 ---
 
