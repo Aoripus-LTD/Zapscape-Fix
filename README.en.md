@@ -36,6 +36,8 @@ applied online via the kernel livepatch mechanism:
 On the host (about 30 minutes including the build):
 
 ```bash
+# In mainland China, clone via the CDN mirror (direct GitHub may fail):
+#   git clone https://cdn.akaere.online/github.com/Aoripus-LTD/Zapscape-Fix.git
 git clone https://github.com/Aoripus-LTD/Zapscape-Fix.git
 cd Zapscape-Fix/livepatch
 
@@ -43,6 +45,8 @@ cd Zapscape-Fix/livepatch
 #    extracted in Deployment step 3, e.g. /root/linux-4.18.0-553.6.1.el8_10,
 #    matching THIS host's kernel version; the script auto-detects the
 #    code shape and picks the variant)
+#    In mainland China append -cn (fetches kpatch via the CDN mirror):
+#    ./build-livepatch.sh -s /root/linux-<your-kernel-source-dir> -j "$(nproc)" -cn
 ./build-livepatch.sh -s /root/linux-<your-kernel-source-dir> -j "$(nproc)"
 
 # 2. apply online (~2 seconds, VMs are unaware)
@@ -54,6 +58,21 @@ kpatch list
 
 `zapscape_cve_2026_64561 [enabled]` means deployment is complete. Full
 steps in [Deployment](#deployment-manual-recommended) below.
+
+### Mainland China network
+
+The scripts accept a `-cn` flag: every download that normally uses
+`github.com` is redirected to the `cdn.akaere.online/github.com` mirror;
+everything else is identical:
+
+```bash
+./build-livepatch.sh -s /root/linux-<your-kernel-source-dir> -j "$(nproc)" -cn   # build (mirror)
+./one-click.sh -cn                                                               # one-shot (experimental, mirror)
+```
+
+> `dnf` repositories (gcc, kernel-devel, ...) use whatever the system is
+> configured with; if dnf is slow, configure a domestic mirror yourself —
+> the scripts do not touch your dnf configuration.
 
 > **On multi-version support**: patches and scripts are generic — run the
 > same flow on any `4.18.0-*` CentOS Stream 8 / RHEL 8 host and it builds

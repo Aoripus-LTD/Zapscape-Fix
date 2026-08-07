@@ -34,12 +34,16 @@
 在宿主机上依次执行（约 30 分钟，含构建时间）：
 
 ```bash
+# 中国大陆网络环境请用 CDN 镜像克隆（直连 GitHub 可能失败）：
+#   git clone https://cdn.akaere.online/github.com/Aoripus-LTD/Zapscape-Fix.git
 git clone https://github.com/Aoripus-LTD/Zapscape-Fix.git
 cd Zapscape-Fix/livepatch
 
 # 1. 构建热补丁模块（-s 指向"部署步骤第 3 步"解压出的、与当前主机内核
 #    同版本的源码目录，例如 /root/linux-4.18.0-553.6.1.el8_10；
 #    脚本自动识别内核形态，无需手工选补丁）
+#    中国大陆环境请追加 -cn（kpatch 源码改从 CDN 镜像下载）：
+#    ./build-livepatch.sh -s /root/linux-<你的内核源码目录> -j "$(nproc)" -cn
 ./build-livepatch.sh -s /root/linux-<你的内核源码目录> -j "$(nproc)"
 
 # 2. 在线加载（约 2 秒，虚拟机无感知）
@@ -51,6 +55,19 @@ kpatch list
 
 看到 `zapscape_cve_2026_64561 [enabled]` 即部署完成。详细步骤见下方
 「[部署步骤](#部署步骤推荐手动)」。
+
+### 中国大陆网络环境
+
+脚本支持 `-cn` 参数：所有原本从 `github.com` 的下载自动改为
+`cdn.akaere.online/github.com` 镜像，其余流程完全一致：
+
+```bash
+./build-livepatch.sh -s /root/linux-<你的内核源码目录> -j "$(nproc)" -cn   # 构建（走镜像）
+./one-click.sh -cn                                                          # 一键（实验性，走镜像）
+```
+
+> `dnf` 软件源（gcc、kernel-devel 等）使用系统已配置的源即可；
+> 如 dnf 过慢，可自行配置国内镜像（阿里云/清华等），脚本不做改动。
 
 > **关于多版本适配**：补丁与脚本是通用的——在任何 `4.18.0-*` 的
 > CentOS Stream 8 / RHEL 8 主机上按同样流程执行，即可为该主机**当前内核**

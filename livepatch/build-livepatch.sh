@@ -5,6 +5,9 @@
 #
 # Usage:
 #   ./build-livepatch.sh -s <kernel-source-dir> [-j N] [-o outdir] [-n name]
+#   ./build-livepatch.sh -s <kernel-source-dir> -cn   # China mainland: fetch
+#                                                     # kpatch via CDN mirror
+#                                                     # (cdn.akaere.online)
 #
 # The script is generic across all 4.18.0-* el8 kernels: it detects the KVM
 # MMU layout in the source tree and picks the correct patch variant.
@@ -16,11 +19,22 @@ JOBS="$(nproc)"
 OUTDIR="/root/kpatch-out"
 NAME="zapscape_cve_2026_64561"
 KPATCH_VER="v0.9.7"
+CN_MODE=0
 
 usage() {
-    sed -n '2,10p' "$0"
+    sed -n '2,12p' "$0"
     exit 1
 }
+
+# Accept -cn / --cn / -c (China mainland mirror mode) before getopts.
+ARGS=()
+for arg in "$@"; do
+    case "$arg" in
+        -cn|--cn|-c) CN_MODE=1 ;;
+        *) ARGS+=("$arg") ;;
+    esac
+done
+set -- "${ARGS[@]}"
 
 while getopts "s:j:o:n:h" opt; do
     case "$opt" in
@@ -38,12 +52,16 @@ done
 # ---------------------------------------------------------------------------
 # 0. Locate kpatch-build (either from a kpatch clone or install it)
 # ---------------------------------------------------------------------------
+KPATCH_URL="https://github.com/dynup/kpatch/archive/refs/tags/${KPATCH_VER}.tar.gz"
+if [[ "$CN_MODE" -eq 1 ]]; then
+    KPATCH_URL="https://cdn.akaere.online/${KPATCH_URL#https://}"
+    echo "[*] China mainland mode (-cn): fetching kpatch via CDN mirror"
+fi
 if [[ ! -x /root/kpatch-src/kpatch-build/kpatch-build ]]; then
     echo "[*] fetching kpatch ${KPATCH_VER}"
     dnf install -y git >/dev/null
     cd /root
-    curl -sL -o kpatch.tar.gz \
-        "https://github.com/dynup/kpatch/archive/refs/tags/${KPATCH_VER}.tar.gz"
+    curl -sL -o kpatch.tar.gz "$KPATCH_URL"
     tar xzf kpatch.tar.gz
     mv "kpatch-${KPATCH_VER#v}" kpatch-src
     make -C /root/kpatch-src/kpatch-build create-diff-object
