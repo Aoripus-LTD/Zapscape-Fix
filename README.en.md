@@ -20,6 +20,7 @@ applied online via the kernel livepatch mechanism:
 ## Table of Contents
 
 - [Affected CPUs](#affected-cpus)
+- [Kernel-ML (ELRepo mainline) Support](#kernel-ml-elrepo-mainline-support)
 - [System Requirements](#system-requirements)
 - [Deployment](#deployment)
 - [Verifying the Patch](#verifying-the-patch)
@@ -75,6 +76,64 @@ V=$(rdmsr -p0 0x48c); echo "EPT PWL5 support: $(( (0x$V >> 7) & 1 ))"   # 1=supp
 > ⚠️ "Not triggerable" ≠ "absolutely safe": it only means the Zapscape Intel
 > path does not exist; other KVM shadow-MMU risks remain — keep following
 > official security updates.
+
+---
+
+## Kernel-ML (ELRepo mainline) Support
+
+If your host runs an ELRepo `kernel-ml` (mainline) kernel — e.g. because
+other CVEs forced a kernel upgrade — Zapscape's fix state depends on the
+version:
+
+| kernel-ml version | Zapscape state | action |
+|---|---|---|
+| 7.1.3 / 7.1.4 | ❌ vulnerable (verified in source) | upgrade to 7.1.7, or apply this repo's patch |
+| 7.1.5 / 7.1.6 | ✅ fixed (upstream 2abd5287f083 merged) | nothing to do |
+| 7.1.7 | ✅ fixed (verified in source) | nothing to do |
+
+- **Recommended**: upgrade kernel-ml to the current release (7.1.7) — the
+  vulnerability is fixed upstream, no live patch needed.
+- **Temporary hardening for 7.1.3/7.1.4**: `build-livepatch.sh`
+  auto-detects the mainline code shape and picks
+  `patches/cve-2026-64561-kernel-ml.patch` (a backport exactly equivalent
+  to upstream `2abd5287f083`; verified applicable on 7.1.3/7.1.4 sources
+  and rejected on the already-fixed 7.1.7). Same zero-downtime live
+  patching.
+
+### Installing kernel-ml in mainland China (ELRepo mirrors)
+
+The official ELRepo repos (elrepo.org) are very slow from mainland China
+(measured ~15 kB/s). Use a domestic mirror instead (measured 4 MB/s+):
+
+```bash
+# install elrepo-release once
+dnf install -y https://www.elrepo.org/elrepo-release-8.el8.elrepo.noarch.rpm
+
+# point elrepo-kernel at the TUNA mirror (USTC works too:
+#   https://mirrors.ustc.edu.cn/elrepo/kernel/el8/$basearch/)
+awk '
+/^\[elrepo-kernel\]/ {ink=1}
+/^\[/ && !/^\[elrepo-kernel\]/ {ink=0}
+ink && /^baseurl=/ { print "baseurl=https://mirrors.tuna.tsinghua.edu.cn/elrepo/kernel/el8/$basearch/"; next }
+ink && /^[[:space:]]/ { next }
+ink && /^mirrorlist=/ { print "#" $0; next }
+{ print }
+' /etc/yum.repos.d/elrepo.repo > /etc/yum.repos.d/elrepo.repo.new && \
+mv /etc/yum.repos.d/elrepo.repo.new /etc/yum.repos.d/elrepo.repo
+
+# install the latest mainline kernel (kernel-ml-devel is needed for
+# kpatch builds too)
+dnf --enablerepo=elrepo-kernel install -y kernel-ml kernel-ml-devel
+
+# confirm the new kernel is the default boot entry
+grubby --default-kernel
+# expect /boot/vmlinuz-7.1.7-1.el8.elrepo.x86_64
+```
+
+> ⚠️ A kernel upgrade **requires a reboot** to take effect; the reboot
+> invalidates any live patch loaded on the 4.18 kernel (not needed on the
+> fixed 7.1.7). Before rebooting, make sure your VMs are recoverable
+> (the 魔方云 panel restarts the VMs it manages).
 
 ---
 

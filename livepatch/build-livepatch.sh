@@ -116,6 +116,13 @@ pick_patch() {
         return
     fi
 
+    if grep -q 'is_page_fault_stale(vcpu, fault))' arch/x86/kvm/mmu/mmu.c; then
+        # ELRepo kernel-ml (mainline 7.1.3/7.1.4): upstream 2abd5287f083 form.
+        # NOTE: kernel-ml 7.1.5+ already contains the upstream fix.
+        echo "$PATCHES_DIR/cve-2026-64561-kernel-ml.patch"
+        return
+    fi
+
     if grep -q 'is_page_fault_stale(vcpu, fault, mmu_seq)' arch/x86/kvm/mmu/mmu.c; then
         if grep -q 'if (is_tdp_mmu_fault) {' arch/x86/kvm/mmu/mmu.c; then
             # RHEL 8.10 / CentOS Stream 8 final (4.18.0-553.x): braced branch

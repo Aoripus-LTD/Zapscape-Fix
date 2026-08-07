@@ -18,6 +18,7 @@
 ## 目录
 
 - [受影响范围（按 CPU）](#受影响范围按cpu)
+- [Kernel-ML（ELRepo mainline 内核）支持](#kernel-mlelrepo-mainline-内核支持)
 - [系统要求](#系统要求)
 - [部署步骤](#部署步骤)
 - [验证补丁是否生效](#验证补丁是否生效)
@@ -68,6 +69,59 @@ V=$(rdmsr -p0 0x48c); echo "EPT PWL5 支持: $(( (0x$V >> 7) & 1 ))"   # 1=支�
 
 > ⚠️ "不可触发"≠"绝对安全"：仅代表 Zapscape 的 Intel 攻击路径不成立；KVM
 > shadow MMU 仍可能有其他风险，请继续关注官方安全更新。
+
+---
+
+## Kernel-ML（ELRepo mainline 内核）支持
+
+如果你的宿主机因其他 CVE 需要新内核而从 ELRepo 安装了 `kernel-ml`
+（mainline 内核），Zapscape 的修复状态取决于版本：
+
+| kernel-ml 版本 | Zapscape 状态 | 处理 |
+|---|---|---|
+| 7.1.3 / 7.1.4 | ❌ 未修复（源码已验证） | 升级到 7.1.7，或使用本仓库补丁 |
+| 7.1.5 / 7.1.6 | ✅ 已修复（上游 2abd5287f083 已合入） | 无需任何操作 |
+| 7.1.7 | ✅ 已修复（源码已验证） | 无需任何操作 |
+
+- **推荐做法**：把 kernel-ml 升级到当前最新版（7.1.7），漏洞随上游修复
+  一并解决，无需 livepatch。
+- **7.1.3/7.1.4 临时加固**：`build-livepatch.sh` 会自动识别 mainline 代码
+  形态并选用 `patches/cve-2026-64561-kernel-ml.patch`（与上游
+  `2abd5287f083` 完全等价的 backport，已在 7.1.3/7.1.4 源码验证可应用、
+  在已修复的 7.1.7 上验证会被拒绝），同样零停机热修补。
+
+### 中国大陆安装 kernel-ml（ELRepo 国内镜像）
+
+ELRepo 官方源（elrepo.org）在国内连通性差（实测约 15 kB/s）。请改用
+国内镜像（实测 4 MB/s+）：
+
+```bash
+# 安装 elrepo-release（一次）
+dnf install -y https://www.elrepo.org/elrepo-release-8.el8.elrepo.noarch.rpm
+
+# 把 elrepo-kernel 源切换到清华 TUNA 镜像（中科大 USTC 同样可用：
+#   https://mirrors.ustc.edu.cn/elrepo/kernel/el8/$basearch/）
+awk '
+/^\[elrepo-kernel\]/ {ink=1}
+/^\[/ && !/^\[elrepo-kernel\]/ {ink=0}
+ink && /^baseurl=/ { print "baseurl=https://mirrors.tuna.tsinghua.edu.cn/elrepo/kernel/el8/$basearch/"; next }
+ink && /^[[:space:]]/ { next }
+ink && /^mirrorlist=/ { print "#" $0; next }
+{ print }
+' /etc/yum.repos.d/elrepo.repo > /etc/yum.repos.d/elrepo.repo.new && \
+mv /etc/yum.repos.d/elrepo.repo.new /etc/yum.repos.d/elrepo.repo
+
+# 安装最新 mainline 内核（含 kernel-ml-devel，kpatch 构建也需要它）
+dnf --enablerepo=elrepo-kernel install -y kernel-ml kernel-ml-devel
+
+# 确认新内核成为默认启动项
+grubby --default-kernel
+# 输出 /boot/vmlinuz-7.1.7-1.el8.elrepo.x86_64 即为成功
+```
+
+> ⚠️ 升级内核**必须重启**才生效；重启会使 4.18 内核上已加载的 livepatch
+> 失效（新内核自带修复则无需重新加载）。重启前请确认虚拟机的恢复机制
+> （魔方云面板会自动拉起其管理的 VM）。
 
 ---
 
