@@ -42,7 +42,19 @@ mkdir -p /root/kernel-src
 if [[ ! -d /root/kernel-src/linux-* ]]; then
     echo "[*] downloading kernel source RPM for $KVER ..."
     cd /root/kernel-src
-    dnf download --source kernel 2>/dev/null || yumdownloader --source kernel
+    if ! dnf download --source kernel 2>/dev/null && ! yumdownloader --source kernel; then
+        echo ""
+        echo "ERROR: could not fetch the kernel source RPM." >&2
+        echo "CentOS Stream 8 is EOL (2024-05); the default repos are dead." >&2
+        echo "Fix: point the repos at a vault mirror, e.g. Aliyun:" >&2
+        echo "  sed -i 's|^mirrorlist=|#mirrorlist=|; s|^#baseurl=http://mirror.centos.org|baseurl=http://mirrors.aliyun.com/centos-vault|' \\" >&2
+        echo "      /etc/yum.repos.d/CentOS-Stream-*.repo" >&2
+        echo "  dnf clean all && dnf makecache" >&2
+        echo "or download directly:" >&2
+        VER="$(uname -r | sed 's/\.x86_64$//')"
+        echo "  curl -O http://mirrors.aliyun.com/centos-vault/8-stream/BaseOS/Source/SPackages/Packages/kernel-${VER}.src.rpm" >&2
+        exit 1
+    fi
     SRCRPM="$(ls kernel-*.src.rpm | head -1)"
     echo "[*] extracting $SRCRPM ..."
     rpm2cpio "$SRCRPM" | cpio -idmv 'linux*.tar.xz' >/dev/null 2>&1

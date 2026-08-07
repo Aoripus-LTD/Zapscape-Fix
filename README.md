@@ -17,85 +17,14 @@
 
 ## 目录
 
-- [快速开始](#快速开始)
 - [系统要求](#系统要求)
-- [部署步骤（推荐手动）](#部署步骤推荐手动)
+- [部署步骤](#部署步骤)
 - [验证补丁是否生效](#验证补丁是否生效)
 - [回滚](#回滚)
 - [常见问题](#常见问题)
 - [项目结构](#项目结构)
 - [参考资料](#参考资料)
 - [版权与许可](#版权与许可)
-
----
-
-## 快速开始
-
-以下命令按顺序**整段复制粘贴**即可完成部署（约 30 分钟，大头是构建时间）：
-
-```bash
-# ── 0) 确认内核支持 livepatch（必须输出 =y，否则无法热补丁）──────────
-grep CONFIG_LIVEPATCH /boot/config-$(uname -r)
-
-# ── 1) 获取本项目 ──────────────────────────────────────────────────────
-# 中国大陆网络环境请改用镜像克隆：
-#   git clone https://ghproxy.net/github.com/Aoripus-LTD/Zapscape-Fix.git
-git clone https://github.com/Aoripus-LTD/Zapscape-Fix.git
-cd Zapscape-Fix/livepatch
-
-# ── 2) 安装依赖（编译工具链 + kpatch）────────────────────────────────
-dnf install -y gcc make git patch elfutils elfutils-devel \
-               elfutils-libelf-devel openssl-devel bc bison flex dwarves \
-               yum-utils dnf-plugins-core kpatch kpatch-dnf
-
-# ── 3) 安装内核开发包（必须与运行内核同一版本）──────────────────────
-dnf install -y kernel-devel-$(uname -r)
-
-# ── 4) 下载并解压内核源码（构建补丁模块必需）────────────────────────
-dnf download --source kernel
-rpm2cpio kernel-*.src.rpm | cpio -idmv 'linux*.tar.xz'
-tar xf linux-*.tar.xz
-SRC=$(ls -d /root/linux-* | head -1)
-echo "内核源码目录: $SRC"
-
-# ── 5) 构建热补丁模块（脚本自动识别内核形态，无需手工选补丁）────────
-# 中国大陆网络环境请追加 -cn（kpatch 源码改走 CDN 镜像）：
-#   ./build-livepatch.sh -s "$SRC" -j "$(nproc)" -cn
-./build-livepatch.sh -s "$SRC" -j "$(nproc)"
-
-# ── 6) 在线加载（约 2 秒，运行中的虚拟机无感知）──────────────────────
-kpatch load /root/kpatch-out/zapscape_cve_2026_64561.ko
-
-# ── 7) 确认生效（看到 [enabled] 即部署完成）──────────────────────────
-kpatch list
-```
-
-输出示例：
-
-```
-Loaded patch modules:
-zapscape_cve_2026_64561 [enabled]
-```
-
-> **关于多版本适配**：补丁与脚本是通用的——在任何 `4.18.0-*` 的
-> CentOS Stream 8 / RHEL 8 主机上按同样流程执行，即可为该主机**当前内核**
-> 构建并加载匹配的模块（构建产物与内核版本绑定，不能跨版本共用；
-> 已实测 `4.18.0-193` ~ `4.18.0-553` 各形态补丁可应用，`4.18.0-553.6.1`
-> 完成全流程零停机验证）。
-
-### 中国大陆网络环境
-
-- 克隆仓库：`git clone https://ghproxy.net/github.com/Aoripus-LTD/Zapscape-Fix.git`
-- 构建加 `-cn`：`./build-livepatch.sh -s "$SRC" -j "$(nproc)" -cn`
-  （仅影响 kpatch 源码下载，其余流程完全一致）
-- `dnf` 软件源使用系统已配置的源即可；如过慢可自行配置国内镜像
-  （阿里云/清华等），脚本不做改动。
-
-> **关于多版本适配**：补丁与脚本是通用的——在任何 `4.18.0-*` 的
-> CentOS Stream 8 / RHEL 8 主机上按同样流程执行，即可为该主机**当前内核**
-> 构建并加载匹配的模块（构建产物与内核版本绑定，不能跨版本共用；
-> 已实测 `4.18.0-193` ~ `4.18.0-553` 各形态补丁可应用，`4.18.0-553.6.1`
-> 完成全流程零停机验证）。
 
 ---
 
@@ -109,14 +38,31 @@ zapscape_cve_2026_64561 [enabled]
 | 依赖 | gcc、make、git、patch、elfutils、openssl-devel、bc、bison、flex、dwarves、kpatch、kernel-devel（与运行内核同版本）、内核源码 RPM |
 | 时间 | 首次构建约 20–40 分钟（取决于 CPU 核数） |
 
-> 内核必须支持 livepatch（`CONFIG_LIVEPATCH=y`，RHEL 8 / Stream 8 默认开启）。
-> 快速开始第 0 步会先检查这一点。
+> 内核必须支持 livepatch（`CONFIG_LIVEPATCH=y`，RHEL 8 / Stream 8 默认开启），
+> 部署第 0 步会先检查。
 
 ---
 
-## 部署步骤（推荐手动）
+## 部署步骤
 
-### 第 1 步：安装前置工具
+### 第 0 步：确认内核支持 livepatch
+
+```bash
+grep CONFIG_LIVEPATCH /boot/config-$(uname -r)
+```
+
+必须输出 `CONFIG_LIVEPATCH=y`，否则该内核无法热补丁。
+
+### 第 1 步：获取本项目
+
+```bash
+# 中国大陆网络环境请用 ghproxy 加速镜像（直连 GitHub 可能失败）：
+#   git clone https://ghproxy.net/github.com/Aoripus-LTD/Zapscape-Fix.git
+git clone https://github.com/Aoripus-LTD/Zapscape-Fix.git
+cd Zapscape-Fix/livepatch
+```
+
+### 第 2 步：安装前置工具
 
 ```bash
 dnf install -y gcc make git patch elfutils elfutils-devel \
@@ -124,37 +70,69 @@ dnf install -y gcc make git patch elfutils elfutils-devel \
                yum-utils dnf-plugins-core kpatch kpatch-dnf
 ```
 
-### 第 2 步：安装内核开发包（必须与运行内核一致）
+### 第 3 步：安装内核开发包（必须与运行内核一致）
 
 ```bash
 dnf install -y kernel-devel-$(uname -r)
 ```
 
-### 第 3 步：获取内核源码
+### 第 4 步：获取内核源码 ⚠️ 重点
+
+**CentOS Stream 8 已于 2024-05-31 停止维护（EOL）**，默认软件源已失效，
+`dnf download --source kernel` 在绝大多数机器上会失败。请按下面任选一种方式。
+
+#### 方式 A：把 dnf 源切换到 vault 镜像（推荐，之后 `dnf` 全家都能用）
+
+以阿里云镜像为例（测试环境实测可用）：
 
 ```bash
+# 把 Stream 8 的源从已失效的 mirrorlist 切换到 vault 快照
+sed -i 's|^mirrorlist=|#mirrorlist=|; s|^#baseurl=http://mirror.centos.org|baseurl=http://mirrors.aliyun.com/centos-vault|' \
+    /etc/yum.repos.d/CentOS-Stream-*.repo
+
+dnf clean all && dnf makecache
+
+# 然后正常下载内核源码（会自动定位到正确文件）
 dnf download --source kernel
+```
+
+> 清华镜像同样可用：把上面的 `mirrors.aliyun.com/centos-vault` 换成
+> `mirrors.tuna.tsinghua.edu.cn/centos-vault`。
+
+#### 方式 B：直接用 curl 下载源码 RPM
+
+```bash
+# URL 规则：<镜像>/centos-vault/8-stream/BaseOS/Source/SPackages/Packages/kernel-<内核版本>.src.rpm
+# 内核版本 = uname -r 去掉结尾的 .x86_64，例如：
+curl -O http://mirrors.aliyun.com/centos-vault/8-stream/BaseOS/Source/SPackages/Packages/kernel-4.18.0-553.6.1.el8.src.rpm
+
+# 也可以自动拼出你自己的内核版本：
+VER=$(uname -r | sed 's/\.x86_64$//')
+curl -O "http://mirrors.aliyun.com/centos-vault/8-stream/BaseOS/Source/SPackages/Packages/kernel-${VER}.src.rpm"
+```
+
+#### 解压源码
+
+```bash
 rpm2cpio kernel-*.src.rpm | cpio -idmv 'linux*.tar.xz'
 tar xf linux-*.tar.xz
+SRC=$(ls -d /root/linux-* | head -1)
+echo "内核源码目录: $SRC"
 ```
 
-> 构建脚本需要在源码目录上操作，记下解压出的目录名，例如
-> `/root/linux-4.18.0-553.6.1.el8_10`。
-> 若 `dnf download --source` 不可用（CentOS Stream 8 已于 2024-05 EOL），
-> 请从 [vault.centos.org](https://vault.centos.org/) 手动下载同版本
-> `kernel-*.src.rpm`。
-
-### 第 4 步：构建热补丁模块
+### 第 5 步：构建热补丁模块
 
 ```bash
-cd Zapscape-Fix/livepatch
-./build-livepatch.sh -s <第 3 步的源码目录> -j "$(nproc)" -o /root/kpatch-out
+./build-livepatch.sh -s "$SRC" -j "$(nproc)"
 ```
+
+> 中国大陆网络环境请追加 `-cn`（kpatch 源码改走 ghproxy 镜像）：
+> `./build-livepatch.sh -s "$SRC" -j "$(nproc)" -cn`
 
 脚本会自动检测内核代码形态并选择正确的补丁变体，无需手工指定。
 构建成功后生成 `/root/kpatch-out/zapscape_cve_2026_64561.ko`。
 
-### 第 5 步：在线加载
+### 第 6 步：在线加载
 
 ```bash
 kpatch load /root/kpatch-out/zapscape_cve_2026_64561.ko
@@ -163,10 +141,9 @@ kpatch load /root/kpatch-out/zapscape_cve_2026_64561.ko
 加载过程约 2 秒，所有任务（包括运行中的虚拟机 vCPU 线程）在安全点切换，
 **虚拟机与业务全程无感知**。
 
-### 第 6 步：验证
+### 第 7 步：验证
 
 ```bash
-cd Zapscape-Fix/livepatch
 ./verify-livepatch.sh
 ```
 
@@ -222,6 +199,10 @@ kpatch unload zapscape_cve_2026_64561    # 卸载模块
 CentOS Stream 8 全部 `4.18.0-*` 内核（变体对照表见
 [docs/TECHNICAL.md](docs/TECHNICAL.md)）。
 
+**Q：`dnf download --source kernel` 报错/找不到包怎么办？**
+这是 Stream 8 EOL 后的正常现象。按部署第 4 步把源切换到 vault 镜像
+（方式 A），或直接按 URL 规则 curl 下载（方式 B）。
+
 **Q：加载补丁会影响正在运行的虚拟机吗？**
 不会。实测中虚拟机（qemu 进程、guest uptime、guest 内服务）全程无感。
 补丁只调整 KVM 缺页处理内的两条语句顺序，不改变任何数据结构或虚拟化特性。
@@ -256,7 +237,7 @@ Zapscape-Fix/
 │   └── ANALYSIS.md        逐行代码证据（英文，面向研究者）
 ├── patches/               7 个内核代码形态的补丁变体
 └── livepatch/
-    ├── build-livepatch.sh 构建热补丁模块（自动选变体）
+    ├── build-livepatch.sh 构建热补丁模块（自动选变体，支持 -cn 镜像模式）
     ├── load-livepatch.sh  加载补丁
     ├── verify-livepatch.sh 验证补丁
     ├── install-deps.sh    自动安装前置环境（辅助）

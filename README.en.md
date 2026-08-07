@@ -19,90 +19,14 @@ applied online via the kernel livepatch mechanism:
 
 ## Table of Contents
 
-- [Quick Start](#quick-start)
 - [System Requirements](#system-requirements)
-- [Deployment (manual, recommended)](#deployment-manual-recommended)
+- [Deployment](#deployment)
 - [Verifying the Patch](#verifying-the-patch)
 - [Rollback](#rollback)
 - [FAQ](#faq)
 - [Project Layout](#project-layout)
 - [References](#references)
 - [Copyright & License](#copyright--license)
-
----
-
-## Quick Start
-
-Copy-paste the whole block in order (about 30 minutes, mostly the build):
-
-```bash
-# ── 0) confirm the kernel supports livepatch (must print =y) ──────────
-grep CONFIG_LIVEPATCH /boot/config-$(uname -r)
-
-# ── 1) get this project ───────────────────────────────────────────────
-# In mainland China, clone via the mirror instead:
-#   git clone https://ghproxy.net/github.com/Aoripus-LTD/Zapscape-Fix.git
-git clone https://github.com/Aoripus-LTD/Zapscape-Fix.git
-cd Zapscape-Fix/livepatch
-
-# ── 2) install dependencies (toolchain + kpatch) ──────────────────────
-dnf install -y gcc make git patch elfutils elfutils-devel \
-               elfutils-libelf-devel openssl-devel bc bison flex dwarves \
-               yum-utils dnf-plugins-core kpatch kpatch-dnf
-
-# ── 3) install kernel-devel (must match the running kernel) ───────────
-dnf install -y kernel-devel-$(uname -r)
-
-# ── 4) download & extract the kernel source (required to build) ───────
-dnf download --source kernel
-rpm2cpio kernel-*.src.rpm | cpio -idmv 'linux*.tar.xz'
-tar xf linux-*.tar.xz
-SRC=$(ls -d /root/linux-* | head -1)
-echo "kernel source dir: $SRC"
-
-# ── 5) build the live-patch module (auto-detects the code shape) ──────
-# In mainland China append -cn (kpatch fetched via the CDN mirror):
-#   ./build-livepatch.sh -s "$SRC" -j "$(nproc)" -cn
-./build-livepatch.sh -s "$SRC" -j "$(nproc)"
-
-# ── 6) apply online (~2 seconds, running VMs are unaware) ─────────────
-kpatch load /root/kpatch-out/zapscape_cve_2026_64561.ko
-
-# ── 7) confirm (you should see [enabled]) ─────────────────────────────
-kpatch list
-```
-
-Example output:
-
-```
-Loaded patch modules:
-zapscape_cve_2026_64561 [enabled]
-```
-
-> **On multi-version support**: patches and scripts are generic — run the
-> same flow on any `4.18.0-*` CentOS Stream 8 / RHEL 8 host and it builds
-> and loads a module matching that host's **current kernel** (build output
-> is bound to the kernel version and cannot be shared across versions;
-> every code shape from `4.18.0-193` to `4.18.0-553` has been verified
-> applicable, and `4.18.0-553.6.1` completed the full zero-downtime
-> verification).
-
-### Mainland China network
-
-- Clone: `git clone https://ghproxy.net/github.com/Aoripus-LTD/Zapscape-Fix.git`
-- Build with `-cn`: `./build-livepatch.sh -s "$SRC" -j "$(nproc)" -cn`
-  (only affects the kpatch source download; everything else is identical)
-- `dnf` repositories use whatever the system is configured with; if dnf is
-  slow, configure a domestic mirror yourself — the scripts do not touch
-  your dnf configuration.
-
-> **On multi-version support**: patches and scripts are generic — run the
-> same flow on any `4.18.0-*` CentOS Stream 8 / RHEL 8 host and it builds
-> and loads a module matching that host's **current kernel** (build output
-> is bound to the kernel version and cannot be shared across versions;
-> every code shape from `4.18.0-193` to `4.18.0-553` has been verified
-> applicable, and `4.18.0-553.6.1` completed the full zero-downtime
-> verification).
 
 ---
 
@@ -117,13 +41,30 @@ zapscape_cve_2026_64561 [enabled]
 | time | first build 20–40 min (CPU-core dependent) |
 
 > The kernel must support livepatch (`CONFIG_LIVEPATCH=y`, default on
-> RHEL 8 / Stream 8). Quick start step 0 checks this first.
+> RHEL 8 / Stream 8); deployment step 0 checks this first.
 
 ---
 
-## Deployment (manual, recommended)
+## Deployment
 
-### Step 1 — install the toolchain
+### Step 0 — confirm the kernel supports livepatch
+
+```bash
+grep CONFIG_LIVEPATCH /boot/config-$(uname -r)
+```
+
+Must print `CONFIG_LIVEPATCH=y`; otherwise this kernel cannot be live-patched.
+
+### Step 1 — get this project
+
+```bash
+# In mainland China, use the ghproxy mirror (direct GitHub may fail):
+#   git clone https://ghproxy.net/github.com/Aoripus-LTD/Zapscape-Fix.git
+git clone https://github.com/Aoripus-LTD/Zapscape-Fix.git
+cd Zapscape-Fix/livepatch
+```
+
+### Step 2 — install the toolchain
 
 ```bash
 dnf install -y gcc make git patch elfutils elfutils-devel \
@@ -131,36 +72,71 @@ dnf install -y gcc make git patch elfutils elfutils-devel \
                yum-utils dnf-plugins-core kpatch kpatch-dnf
 ```
 
-### Step 2 — install kernel-devel (must match the running kernel)
+### Step 3 — install kernel-devel (must match the running kernel)
 
 ```bash
 dnf install -y kernel-devel-$(uname -r)
 ```
 
-### Step 3 — fetch the kernel source
+### Step 4 — fetch the kernel source ⚠️ important
+
+**CentOS Stream 8 reached EOL on 2024-05-31** — the default repos are dead,
+so `dnf download --source kernel` fails on virtually every machine. Use
+either method below.
+
+#### Method A: switch dnf to a vault mirror (recommended; the whole dnf works again)
+
+Using the Aliyun mirror (verified working in our test environment):
 
 ```bash
+# Point Stream 8 repos at the vault snapshot instead of the dead mirrorlist
+sed -i 's|^mirrorlist=|#mirrorlist=|; s|^#baseurl=http://mirror.centos.org|baseurl=http://mirrors.aliyun.com/centos-vault|' \
+    /etc/yum.repos.d/CentOS-Stream-*.repo
+
+dnf clean all && dnf makecache
+
+# Now the normal command works (it auto-locates the right file)
 dnf download --source kernel
+```
+
+> The Tsinghua mirror works too: replace `mirrors.aliyun.com/centos-vault`
+> with `mirrors.tuna.tsinghua.edu.cn/centos-vault`.
+
+#### Method B: download the source RPM directly with curl
+
+```bash
+# URL rule: <mirror>/centos-vault/8-stream/BaseOS/Source/SPackages/Packages/kernel-<kernel-version>.src.rpm
+# kernel-version = uname -r without the trailing .x86_64, e.g.:
+curl -O http://mirrors.aliyun.com/centos-vault/8-stream/BaseOS/Source/SPackages/Packages/kernel-4.18.0-553.6.1.el8.src.rpm
+
+# or build it for your own kernel automatically:
+VER=$(uname -r | sed 's/\.x86_64$//')
+curl -O "http://mirrors.aliyun.com/centos-vault/8-stream/BaseOS/Source/SPackages/Packages/kernel-${VER}.src.rpm"
+```
+
+#### Extract the source
+
+```bash
 rpm2cpio kernel-*.src.rpm | cpio -idmv 'linux*.tar.xz'
 tar xf linux-*.tar.xz
+SRC=$(ls -d /root/linux-* | head -1)
+echo "kernel source dir: $SRC"
 ```
 
-> Remember the extracted directory name (e.g. `/root/linux-4.18.0-553.6.1.el8_10`).
-> If `dnf download --source` is unavailable (CentOS Stream 8 reached EOL in
-> 2024-05), grab the matching `kernel-*.src.rpm` from
-> [vault.centos.org](https://vault.centos.org/).
-
-### Step 4 — build the live-patch module
+### Step 5 — build the live-patch module
 
 ```bash
-cd Zapscape-Fix/livepatch
-./build-livepatch.sh -s <source dir from step 3> -j "$(nproc)" -o /root/kpatch-out
+./build-livepatch.sh -s "$SRC" -j "$(nproc)"
 ```
 
-The script auto-detects the kernel code shape and picks the correct patch
-variant. Output: `/root/kpatch-out/zapscape_cve_2026_64561.ko`.
+> In mainland China append `-cn` (kpatch fetched via the ghproxy mirror):
+> `./build-livepatch.sh -s "$SRC" -j "$(nproc)" -cn`
 
-### Step 5 — apply online
+The script auto-detects the kernel code shape and picks the correct patch
+variant; nothing to choose manually. Output:
+`/root/kpatch-out/zapscape_cve_2026_64561.ko`.
+
+### Step 6 — apply online
 
 ```bash
 kpatch load /root/kpatch-out/zapscape_cve_2026_64561.ko
@@ -169,10 +145,9 @@ kpatch load /root/kpatch-out/zapscape_cve_2026_64561.ko
 Takes about 2 seconds; every task (including live vCPU threads) migrates at
 a safe point — **VMs and workloads are unaware**.
 
-### Step 6 — verify
+### Step 7 — verify
 
 ```bash
-cd Zapscape-Fix/livepatch
 ./verify-livepatch.sh
 ```
 
@@ -230,6 +205,11 @@ Yes. The build script auto-selects the patch variant by code shape,
 covering every RHEL 8.0–8.10 / CentOS Stream 8 `4.18.0-*` kernel
 (variant table: [docs/TECHNICAL.md](docs/TECHNICAL.md)).
 
+**Q: `dnf download --source kernel` fails / package not found?**
+Expected after the Stream 8 EOL. Switch the repos to a vault mirror
+(Deployment step 4, method A) or download the RPM directly by URL
+(method B).
+
 **Q: Does loading the patch affect running VMs?**
 No. Verified live: the qemu process, guest uptime and in-guest services are
 unaffected. The patch only reorders two statements in the KVM page-fault
@@ -265,7 +245,7 @@ Zapscape-Fix/
 │   └── ANALYSIS.md        line-level code evidence (English, for researchers)
 ├── patches/               7 patch variants for all 4.18.0 code shapes
 └── livepatch/
-    ├── build-livepatch.sh  build the module (auto variant selection)
+    ├── build-livepatch.sh  build the module (auto variant selection, -cn)
     ├── load-livepatch.sh   apply the patch
     ├── verify-livepatch.sh verify the patch
     ├── install-deps.sh     prerequisite installer (helper)
