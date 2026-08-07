@@ -1,0 +1,41 @@
+static int direct_page_fault(struct kvm_vcpu *vcpu, struct kvm_page_fault *fault)
+{
+	int r;
+
+	/* Dummy roots are used only for shadowing bad guest roots. */
+	if (WARN_ON_ONCE(kvm_mmu_is_dummy_root(vcpu->arch.mmu->root.hpa)))
+		return RET_PF_RETRY;
+
+	if (page_fault_handle_page_track(vcpu, fault))
+		return RET_PF_WRITE_PROTECTED;
+
+	r = fast_page_fault(vcpu, fault);
+	if (r != RET_PF_INVALID)
+		return r;
+
+	r = mmu_topup_memory_caches(vcpu, false);
+	if (r)
+		return r;
+
+	r = kvm_mmu_faultin_pfn(vcpu, fault, ACC_ALL);
+	if (r != RET_PF_CONTINUE)
+		return r;
+
+	write_lock(&vcpu->kvm->mmu_lock);
+
+	r = make_mmu_pages_available(vcpu);
+	if (r)
+		goto out_unlock;
+
+	if (is_page_fault_stale(vcpu, fault)) {
+		r = RET_PF_RETRY;
+		goto out_unlock;
+	}
+
+	r = direct_map(vcpu, fault);
+
+out_unlock:
+	kvm_mmu_finish_page_fault(vcpu, fault, r);
+	write_unlock(&vcpu->kvm->mmu_lock);
+	return r;
+}

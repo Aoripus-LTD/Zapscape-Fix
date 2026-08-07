@@ -1,0 +1,46 @@
+static int paging32_page_fault(struct kvm_vcpu *vcpu, struct kvm_page_fault *fault)
+{
+ struct guest_walker32 walker;
+ int r;
+ WARN_ON_ONCE(fault->is_tdp);
+ r = paging32_walk_addr(&walker, vcpu, fault->addr,
+        fault->error_code & ~PFERR_RSVD_MASK);
+ if (!r) {
+  if (!fault->prefetch)
+   kvm_inject_emulated_page_fault(vcpu, &walker.fault);
+  return RET_PF_RETRY;
+ }
+ fault->gfn = walker.gfn;
+ fault->max_level = walker.level;
+ fault->slot = kvm_vcpu_gfn_to_memslot(vcpu, fault->gfn);
+ if (page_fault_handle_page_track(vcpu, fault)) {
+  shadow_page_table_clear_flood(vcpu, fault->addr);
+  return RET_PF_WRITE_PROTECTED;
+ }
+ r = mmu_topup_memory_caches(vcpu, true);
+ if (r)
+  return r;
+ r = kvm_mmu_faultin_pfn(vcpu, fault, walker.pte_access);
+ if (r != RET_PF_CONTINUE)
+  return r;
+ if (fault->write && !(walker.pte_access & ACC_WRITE_MASK) &&
+     !is_cr0_wp(vcpu->arch.mmu) && !fault->user && fault->slot) {
+  walker.pte_access |= ACC_WRITE_MASK;
+  walker.pte_access &= ~ACC_USER_MASK;
+  if (is_cr4_smep(vcpu->arch.mmu))
+   walker.pte_access &= ~ACC_EXEC_MASK;
+ }
+ write_lock(&vcpu->kvm->mmu_lock);
+ r = make_mmu_pages_available(vcpu);
+ if (r)
+  goto out_unlock;
+ if (is_page_fault_stale(vcpu, fault)) {
+  r = RET_PF_RETRY;
+  goto out_unlock;
+ }
+ r = paging32_fetch(vcpu, fault, &walker);
+out_unlock:
+ kvm_mmu_finish_page_fault(vcpu, fault, r);
+ write_unlock(&vcpu->kvm->mmu_lock);
+ return r;
+}

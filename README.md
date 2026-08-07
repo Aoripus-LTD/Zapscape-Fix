@@ -79,16 +79,26 @@ V=$(rdmsr -p0 0x48c); echo "EPT PWL5 支持: $(( (0x$V >> 7) & 1 ))"   # 1=支�
 
 | kernel-ml 版本 | Zapscape 状态 | 处理 |
 |---|---|---|
-| 7.1.3 / 7.1.4 | ❌ 未修复（源码已验证） | 升级到 7.1.7，或使用本仓库补丁 |
+| 7.1.3 / 7.1.4 | ❌ 未修复（源码已验证） | 升级到 7.1.7，或使用本仓库 kernel-ml livepatch（已实测） |
 | 7.1.5 / 7.1.6 | ✅ 已修复（上游 2abd5287f083 已合入） | 无需任何操作 |
 | 7.1.7 | ✅ 已修复（源码已验证） | 无需任何操作 |
 
 - **推荐做法**：把 kernel-ml 升级到当前最新版（7.1.7），漏洞随上游修复
   一并解决，无需 livepatch。
-- **7.1.3/7.1.4 临时加固**：`build-livepatch.sh` 会自动识别 mainline 代码
-  形态并选用 `patches/cve-2026-64561-kernel-ml.patch`（与上游
-  `2abd5287f083` 完全等价的 backport，已在 7.1.3/7.1.4 源码验证可应用、
-  在已修复的 7.1.7 上验证会被拒绝），同样零停机热修补。
+- **7.1.3/7.1.4 热修补（已实测）**：mainline 内核自带完整的 KLP 工具链
+  （`CONFIG_LIVEPATCH=y` + `CONFIG_KLP_BUILD=y` + objtool `klp` 子命令），
+  无需 kpatch。本仓库用内核原生的 `objtool klp diff` + `post-link` 流程，
+  以 `7.1.7` 中已修复的 `direct_page_fault` / `paging64_page_fault` /
+  `paging32_page_fault` / `ept_page_fault` 为替换体，生成对 7.1.3 的
+  livepatch 模块（`livepatch/kernel-ml/`，详见
+  [livepatch/kernel-ml/README.md](livepatch/kernel-ml/README.md)）。
+  已在 7.1.3（自编译，与 ELRepo 7.1.x 源码一致）上实测：
+  `kpatch`/`objtool` 生成的模块加载成功，`/sys/kernel/livepatch` 显示
+  4 个函数全部替换（enabled=1）、transition 完成，运行中的虚拟机零感知。
+
+> 说明：7.1.x 已移除 kpatch 时代的 `klp_reloc` 旧格式，改用 `.klp.rela.*`
+> 段（`klp_resolve_symbols` 解析），因此 4.18 用的 kpatch 0.9.x 工具链在
+> 7.1.x 上不可用；本仓库的 kernel-ml 方案完全基于内核原生 KLP 工具链。
 
 ### 中国大陆安装 kernel-ml（ELRepo 国内镜像）
 
@@ -339,7 +349,10 @@ Zapscape-Fix/
     ├── load-livepatch.sh  加载补丁
     ├── verify-livepatch.sh 验证补丁
     ├── install-deps.sh    自动安装前置环境（辅助）
-    └── one-click.sh       一键部署（⚠️ 实验性）
+    ├── one-click.sh       一键部署（⚠️ 实验性）
+    └── kernel-ml/         kernel-ml 7.1.3/7.1.4 专用方案（内核原生 objtool
+                            klp 工具链，已实测；含 build-klp.sh / load-klp.sh
+                            / 源码 / 文档）
 ```
 
 ---
@@ -362,7 +375,8 @@ Zapscape-Fix/
 
 ## 致谢
 
-感谢 **林枫云（四川）网络科技有限公司** 在 PoC 泄露后第一时间为我们提供了用于验证测试的服务器。
+感谢 **林枫云（四川）网络科技有限公司**（GitHub: [@Edakerx](https://github.com/Edakerx)）
+在 PoC 泄露后第一时间为我们提供了用于验证测试的服务器。
 
 ---
 
