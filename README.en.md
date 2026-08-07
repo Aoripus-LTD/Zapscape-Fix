@@ -319,6 +319,13 @@ Zapscape-Fix/
 
 ---
 
+## Acknowledgements
+
+Thanks to **林枫云（四川）网络科技有限公司 (LinFengYun)** for providing the
+verification/test server for this work right after the PoC disclosure.
+
+---
+
 ## Copyright & License
 
 Copyright © 2026 Aoripus (Beijing) Technology Co., Ltd. · 安锐普世（北京）科技有限公司
