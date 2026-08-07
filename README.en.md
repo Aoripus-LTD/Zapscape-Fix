@@ -33,46 +33,68 @@ applied online via the kernel livepatch mechanism:
 
 ## Quick Start
 
-On the host (about 30 minutes including the build):
+Copy-paste the whole block in order (about 30 minutes, mostly the build):
 
 ```bash
-# In mainland China, clone via the CDN mirror (direct GitHub may fail):
+# ── 0) confirm the kernel supports livepatch (must print =y) ──────────
+grep CONFIG_LIVEPATCH /boot/config-$(uname -r)
+
+# ── 1) get this project ───────────────────────────────────────────────
+# In mainland China, clone via the mirror instead:
 #   git clone https://cdn.akaere.online/github.com/Aoripus-LTD/Zapscape-Fix.git
 git clone https://github.com/Aoripus-LTD/Zapscape-Fix.git
 cd Zapscape-Fix/livepatch
 
-# 1. build the live-patch module (-s points at the source directory you
-#    extracted in Deployment step 3, e.g. /root/linux-4.18.0-553.6.1.el8_10,
-#    matching THIS host's kernel version; the script auto-detects the
-#    code shape and picks the variant)
-#    In mainland China append -cn (fetches kpatch via the CDN mirror):
-#    ./build-livepatch.sh -s /root/linux-<your-kernel-source-dir> -j "$(nproc)" -cn
-./build-livepatch.sh -s /root/linux-<your-kernel-source-dir> -j "$(nproc)"
+# ── 2) install dependencies (toolchain + kpatch) ──────────────────────
+dnf install -y gcc make git patch elfutils elfutils-devel \
+               elfutils-libelf-devel openssl-devel bc bison flex dwarves \
+               yum-utils dnf-plugins-core kpatch kpatch-dnf
 
-# 2. apply online (~2 seconds, VMs are unaware)
+# ── 3) install kernel-devel (must match the running kernel) ───────────
+dnf install -y kernel-devel-$(uname -r)
+
+# ── 4) download & extract the kernel source (required to build) ───────
+dnf download --source kernel
+rpm2cpio kernel-*.src.rpm | cpio -idmv 'linux*.tar.xz'
+tar xf linux-*.tar.xz
+SRC=$(ls -d /root/linux-* | head -1)
+echo "kernel source dir: $SRC"
+
+# ── 5) build the live-patch module (auto-detects the code shape) ──────
+# In mainland China append -cn (kpatch fetched via the CDN mirror):
+#   ./build-livepatch.sh -s "$SRC" -j "$(nproc)" -cn
+./build-livepatch.sh -s "$SRC" -j "$(nproc)"
+
+# ── 6) apply online (~2 seconds, running VMs are unaware) ─────────────
 kpatch load /root/kpatch-out/zapscape_cve_2026_64561.ko
 
-# 3. confirm
+# ── 7) confirm (you should see [enabled]) ─────────────────────────────
 kpatch list
 ```
 
-`zapscape_cve_2026_64561 [enabled]` means deployment is complete. Full
-steps in [Deployment](#deployment-manual-recommended) below.
+Example output:
+
+```
+Loaded patch modules:
+zapscape_cve_2026_64561 [enabled]
+```
+
+> **On multi-version support**: patches and scripts are generic — run the
+> same flow on any `4.18.0-*` CentOS Stream 8 / RHEL 8 host and it builds
+> and loads a module matching that host's **current kernel** (build output
+> is bound to the kernel version and cannot be shared across versions;
+> every code shape from `4.18.0-193` to `4.18.0-553` has been verified
+> applicable, and `4.18.0-553.6.1` completed the full zero-downtime
+> verification).
 
 ### Mainland China network
 
-The scripts accept a `-cn` flag: every download that normally uses
-`github.com` is redirected to the `cdn.akaere.online/github.com` mirror;
-everything else is identical:
-
-```bash
-./build-livepatch.sh -s /root/linux-<your-kernel-source-dir> -j "$(nproc)" -cn   # build (mirror)
-./one-click.sh -cn                                                               # one-shot (experimental, mirror)
-```
-
-> `dnf` repositories (gcc, kernel-devel, ...) use whatever the system is
-> configured with; if dnf is slow, configure a domestic mirror yourself —
-> the scripts do not touch your dnf configuration.
+- Clone: `git clone https://cdn.akaere.online/github.com/Aoripus-LTD/Zapscape-Fix.git`
+- Build with `-cn`: `./build-livepatch.sh -s "$SRC" -j "$(nproc)" -cn`
+  (only affects the kpatch source download; everything else is identical)
+- `dnf` repositories use whatever the system is configured with; if dnf is
+  slow, configure a domestic mirror yourself — the scripts do not touch
+  your dnf configuration.
 
 > **On multi-version support**: patches and scripts are generic — run the
 > same flow on any `4.18.0-*` CentOS Stream 8 / RHEL 8 host and it builds
@@ -94,8 +116,8 @@ everything else is identical:
 | dependencies | gcc, make, git, patch, elfutils, openssl-devel, bc, bison, flex, dwarves, kpatch, kernel-devel (matching `uname -r`), kernel source RPM |
 | time | first build 20–40 min (CPU-core dependent) |
 
-> Check livepatch support first: `grep CONFIG_LIVEPATCH /boot/config-$(uname -r)`
-> should be `=y` (default on RHEL 8 / Stream 8).
+> The kernel must support livepatch (`CONFIG_LIVEPATCH=y`, default on
+> RHEL 8 / Stream 8). Quick start step 0 checks this first.
 
 ---
 

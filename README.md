@@ -31,43 +31,65 @@
 
 ## 快速开始
 
-在宿主机上依次执行（约 30 分钟，含构建时间）：
+以下命令按顺序**整段复制粘贴**即可完成部署（约 30 分钟，大头是构建时间）：
 
 ```bash
-# 中国大陆网络环境请用 CDN 镜像克隆（直连 GitHub 可能失败）：
+# ── 0) 确认内核支持 livepatch（必须输出 =y，否则无法热补丁）──────────
+grep CONFIG_LIVEPATCH /boot/config-$(uname -r)
+
+# ── 1) 获取本项目 ──────────────────────────────────────────────────────
+# 中国大陆网络环境请改用镜像克隆：
 #   git clone https://cdn.akaere.online/github.com/Aoripus-LTD/Zapscape-Fix.git
 git clone https://github.com/Aoripus-LTD/Zapscape-Fix.git
 cd Zapscape-Fix/livepatch
 
-# 1. 构建热补丁模块（-s 指向"部署步骤第 3 步"解压出的、与当前主机内核
-#    同版本的源码目录，例如 /root/linux-4.18.0-553.6.1.el8_10；
-#    脚本自动识别内核形态，无需手工选补丁）
-#    中国大陆环境请追加 -cn（kpatch 源码改从 CDN 镜像下载）：
-#    ./build-livepatch.sh -s /root/linux-<你的内核源码目录> -j "$(nproc)" -cn
-./build-livepatch.sh -s /root/linux-<你的内核源码目录> -j "$(nproc)"
+# ── 2) 安装依赖（编译工具链 + kpatch）────────────────────────────────
+dnf install -y gcc make git patch elfutils elfutils-devel \
+               elfutils-libelf-devel openssl-devel bc bison flex dwarves \
+               yum-utils dnf-plugins-core kpatch kpatch-dnf
 
-# 2. 在线加载（约 2 秒，虚拟机无感知）
+# ── 3) 安装内核开发包（必须与运行内核同一版本）──────────────────────
+dnf install -y kernel-devel-$(uname -r)
+
+# ── 4) 下载并解压内核源码（构建补丁模块必需）────────────────────────
+dnf download --source kernel
+rpm2cpio kernel-*.src.rpm | cpio -idmv 'linux*.tar.xz'
+tar xf linux-*.tar.xz
+SRC=$(ls -d /root/linux-* | head -1)
+echo "内核源码目录: $SRC"
+
+# ── 5) 构建热补丁模块（脚本自动识别内核形态，无需手工选补丁）────────
+# 中国大陆网络环境请追加 -cn（kpatch 源码改走 CDN 镜像）：
+#   ./build-livepatch.sh -s "$SRC" -j "$(nproc)" -cn
+./build-livepatch.sh -s "$SRC" -j "$(nproc)"
+
+# ── 6) 在线加载（约 2 秒，运行中的虚拟机无感知）──────────────────────
 kpatch load /root/kpatch-out/zapscape_cve_2026_64561.ko
 
-# 3. 确认生效
+# ── 7) 确认生效（看到 [enabled] 即部署完成）──────────────────────────
 kpatch list
 ```
 
-看到 `zapscape_cve_2026_64561 [enabled]` 即部署完成。详细步骤见下方
-「[部署步骤](#部署步骤推荐手动)」。
+输出示例：
+
+```
+Loaded patch modules:
+zapscape_cve_2026_64561 [enabled]
+```
+
+> **关于多版本适配**：补丁与脚本是通用的——在任何 `4.18.0-*` 的
+> CentOS Stream 8 / RHEL 8 主机上按同样流程执行，即可为该主机**当前内核**
+> 构建并加载匹配的模块（构建产物与内核版本绑定，不能跨版本共用；
+> 已实测 `4.18.0-193` ~ `4.18.0-553` 各形态补丁可应用，`4.18.0-553.6.1`
+> 完成全流程零停机验证）。
 
 ### 中国大陆网络环境
 
-脚本支持 `-cn` 参数：所有原本从 `github.com` 的下载自动改为
-`cdn.akaere.online/github.com` 镜像，其余流程完全一致：
-
-```bash
-./build-livepatch.sh -s /root/linux-<你的内核源码目录> -j "$(nproc)" -cn   # 构建（走镜像）
-./one-click.sh -cn                                                          # 一键（实验性，走镜像）
-```
-
-> `dnf` 软件源（gcc、kernel-devel 等）使用系统已配置的源即可；
-> 如 dnf 过慢，可自行配置国内镜像（阿里云/清华等），脚本不做改动。
+- 克隆仓库：`git clone https://cdn.akaere.online/github.com/Aoripus-LTD/Zapscape-Fix.git`
+- 构建加 `-cn`：`./build-livepatch.sh -s "$SRC" -j "$(nproc)" -cn`
+  （仅影响 kpatch 源码下载，其余流程完全一致）
+- `dnf` 软件源使用系统已配置的源即可；如过慢可自行配置国内镜像
+  （阿里云/清华等），脚本不做改动。
 
 > **关于多版本适配**：补丁与脚本是通用的——在任何 `4.18.0-*` 的
 > CentOS Stream 8 / RHEL 8 主机上按同样流程执行，即可为该主机**当前内核**
@@ -87,8 +109,8 @@ kpatch list
 | 依赖 | gcc、make、git、patch、elfutils、openssl-devel、bc、bison、flex、dwarves、kpatch、kernel-devel（与运行内核同版本）、内核源码 RPM |
 | 时间 | 首次构建约 20–40 分钟（取决于 CPU 核数） |
 
-> 需要先确认内核支持 livepatch：`grep CONFIG_LIVEPATCH /boot/config-$(uname -r)`
-> 应为 `=y`（RHEL 8 / Stream 8 默认开启）。
+> 内核必须支持 livepatch（`CONFIG_LIVEPATCH=y`，RHEL 8 / Stream 8 默认开启）。
+> 快速开始第 0 步会先检查这一点。
 
 ---
 
